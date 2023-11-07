@@ -1,22 +1,27 @@
 # RSYNC for ESXi
-### Build script for compiling rsync for use with VMware ESXi
+### Build scripts for compiling rsync for use with VMware ESXi
 Rsync is a mature Linux staple for reliably replicating files over imperfect or lower speed links. For data migration it is particularly useful for keeping track of data changes between systems during a staged cutover, but it is equally useful as a backup and disaster recovery tool.
 
-## Requirements:
-- **A centos 7 virtual machine**
-  - Download a Centos 7 ISO here: http://isoredirect.centos.org/centos/7/isos/x86_64/
-- **A Centos 7 user account with sudo administrator rights**
+If you dont want to build your own, a prebuilt rsync executable is available here: [rsync v3.2.7 for ESXi](https://github.com/itiligent/RSYNC-for-ESXi/raw/main/rsync)
 
+## Compile rsync with Centos 7 OS or Docker
+You will need either:
+- An instance of Centos 7 OS _[Get the Centos 7 ISO here]( http://isoredirect.centos.org/centos/7/isos/x86_64/)_
+- Docker pre installed (any host OS). 
 
-## Build Instructions
-You can build your own rsync binary with the [included build script](https://raw.githubusercontent.com/itiligent/RSYNC-for-ESXi/main/rsync-esxi-builder.sh), or you can [download rsync v3.2.7 for ESXi prebuilt](https://github.com/itiligent/RSYNC-for-ESXi/raw/main/rsync)
-
-  
-    1. Copy the build script to your Centos 7 home directory
-    2. Make build script executable: chmod +x rsync-builder-centos7.sh
-    3. Run the build script (don't run as sudo, it will prompt for sudo): ./rsync-builder-centos7.sh
-    4. Copy the new rync binary to a *persistent* location in ESXi (e.g. a VMFS datastore or /productLocker/ are good locations) 
-    5. Set execute permissions on rsync: chmod 744 rsync
+**To compile rsync natively within Centos 7:**
+```
+1. chmod +x rsync-esxi-compiler.sh && ./rsync-esxi-compiler.sh
+```  
+**To compile rsync within a fresh & isolated Docker container:**
+```
+1. chmod +x rsync-esxi-compiler-docker.sh && ./rsync-esxi-compiler-docker.sh
+```
+   **Common completion steps:**
+```
+2. Copy the completed rsync binary to a *persistent* location in ESXi (e.g. a VMFS datastore or /productLocker/ are good locations)
+3. In ESXi set execute permissions on rsync: `chmod 755 rsync`
+```
 
 ## ESXi rsync examples:
 ### rsync via SSH (prompts for destination's password):
@@ -31,7 +36,7 @@ You can build your own rsync binary with the [included build script](https://raw
 ```
 
 ### rsync to a local USB Datastore
-Note: rsync over USB can be slower than over the network. See [here for instructions on adding a USB VMFS backup datastore](https://github.com/itiligent/ESXi-Custom-ISO/blob/main/homelab-cheat-sheet.md#to-add-a-usb-backup-datastore-to-esxi)
+Note: rsync over USB can be slower than over the network. See [here](https://github.com/itiligent/ESXi-Custom-ISO/blob/main/homelab-cheat-sheet.md#to-add-a-usb-backup-datastore-to-esxi) for instructions on adding a USB backup VMFS datastore.
 
     1. Establish a USB VMFS backup datastore
     2. Create a backup destination folder on the USB datastore e.g. mkdir /vmfs/volumes/USB_datastore/full_backup
