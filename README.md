@@ -5,9 +5,10 @@ Rsync is a mature Linux staple for reliably replicating files over imperfect or 
 If you dont want to build your own, a prebuilt rsync executable is available here: [rsync v3.2.7 for ESXi](https://github.com/itiligent/RSYNC-for-ESXi/raw/main/rsync)
 
 ## Compile rsync with Centos 7 or Docker
+## Compile rsync with Centos 7 or Docker
 You will need either:
-- An instance of Centos 7 OS _[Get the Centos 7 ISO here]( http://isoredirect.centos.org/centos/7/isos/x86_64/)_
-- Docker pre installed (any host OS). 
+- For source build, an instance of Centos 7 OS _[Get the Centos 7 ISO here]( http://isoredirect.centos.org/centos/7/isos/x86_64/)_
+- For Docker build, Docker pre installed (any host OS). 
 
 **To compile rsync natively within Centos 7:**
 ```
@@ -19,8 +20,8 @@ You will need either:
 ```
    **Common completion steps:**
 ```
-2. Copy the completed rsync binary to a *persistent* location in ESXi (e.g. a VMFS datastore or /productLocker/ are good locations)
-3. In ESXi set execute permissions on rsync: `chmod 755 rsync`
+2. Copy the completed rsync binary to a *persistent* location in ESXi: e.g. any VMFS datastore or /productLocker/ are good locations
+3. In ESXi set execute permissions on rsync: chmod 755 rsync
 4. ESXi 8 only (see issue #1): esxcli system settings advanced set -o /User/execInstalledOnly -i 0
 ```
 
