@@ -5,7 +5,6 @@ Rsync is a mature Linux staple for reliably replicating files over imperfect or 
 If you dont want to build your own, a prebuilt rsync executable is available here: [rsync v3.2.7 for ESXi](https://github.com/itiligent/RSYNC-for-ESXi/raw/main/rsync)
 
 ## Compile rsync with Centos 7 or Docker
-## Compile rsync with Centos 7 or Docker
 You will need either:
 - For source build, an instance of Centos 7 OS _[Get the Centos 7 ISO here]( http://isoredirect.centos.org/centos/7/isos/x86_64/)_
 - For Docker build, Docker pre installed (any host OS). 
