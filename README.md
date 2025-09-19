@@ -14,7 +14,7 @@ This project restores essential Linux functionality on VMware ESXi by providing 
 
 If you dont wan't to build your own, download here:
 * Latest version: [rsync v3.4.1 for ESXi](https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-3.4.1)
-* Older ESXi6: [rsync v3.2.7 for ESXi](https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-3.2.7)
+* Older ESXi 6.x: [rsync v3.2.7 for ESXi](https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-3.2.7)
 
 ---
 
@@ -32,7 +32,7 @@ Any distributions with the `glibc-static` package eg:
 - Oracle Linux 8, 9, 10  
 - Rocky Linux 8, 9, 10  
 
-## Building the Portable (Static) Rsync Binary
+## Building A Portable Rsync Binary
 
 1. On a fresh supported system, run the build script **(not as root or sudo)**:
 
