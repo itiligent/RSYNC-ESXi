@@ -1,25 +1,28 @@
 #!/bin/bash
 ###############################################################################################################
-# Compile a static RSYNC binary for use with VMware ESXi (6,7,8 & 9) from Fedora 42 system packages
+# Compile a static RSYNC binary (ALL FROM SOURCE) for use with VMware ESXi (6,7,8 & 9 )
 # David Harrop
 # September 2025
 ###############################################################################################################
 
 ## Build Instructions
-# 1. On a fresh Fedora 42 system, run the build script (not as sudo or root) ./rsync-esxi-builder-fedora42.sh
+# 1. This script is for use with Fedora 42 only. It should work with other Redhat flavored distros that support
+# 	 the same package names used. For a full list of potentials see here: https://pkgs.org/download/glibc-static
 #
-# 2. When the script completes, copy the compiled rsync binary from $HOME/build-static/bin to 
-#    	all source & destination ESXi hosts** (note the install path of each - you will need this later)
+# 2. Run the build script NOT as sudo or root ./rsync-esxi-builder-multiOS.sh
 #
-# 3. On each ESXi host, set execute permissions on the binary: chmod 755 /path/to/rsync
+# 3. When the script completes, copy the compiled rsync binary from $HOME/build-static/bin to 
+#    all source & destination ESXi hosts** (note the install path of each - you will need this later)
 #
-# 4. For ESXi 8 and above only – you must also allow execution of non-native binaries:
-#    	esxcli system settings advanced set -o /User/execInstalledOnly -i 0
+# 4. On each ESXi host, set execute permissions on the binary: chmod 755 /path/to/rsync
 #
-# 5. Configure RSA SSH keys for passwordless SSH authentication. 
-# 		(VMware does not currently support Ed25519 keys for Esxi host to host sessions.)
+# 5. For ESXi 8 and above only – you must also allow execution of non-native binaries:
+#    esxcli system settings advanced set -o /User/execInstalledOnly -i 0
 #
-# 6. Look to the usage examples on https://github.com/itiligent/RSYNC-ESXi?tab=readme-ov-file#-usage-examples
+# 6. Configure RSA SSH keys for passwordless SSH authentication. Note: VMware does not currently support Ed25519
+#    keys for Esxi host to host sessions.)
+#
+# 7. Look to https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-host-2-host.sh for the companion replication script
 
 set -eu
 
