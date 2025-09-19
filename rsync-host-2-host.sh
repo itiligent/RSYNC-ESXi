@@ -32,7 +32,7 @@
 #
 # Checksum Verification:
 #   - --append-verify (safe mode) ensures appended data is validated during copy.
-#     For belt and braces assurance and to ensure the finished copy integrity, run with:
+#     For "belt and braces" assurance and to ensure the finished copy integrity, run with:
 #     --checksum or --checksum-type=<algo> to choose the checksum algorithm
 #     This script assumes rysnc support for: md5, md4, sha1, sha256, sha512,
 #     xxh64, xxh128, xxh3 (default: xxh3)
@@ -46,23 +46,28 @@
 #   - To preserve resources this script automatically cleans up any stale rsync processes
 #    on start, exit, or Ctrl+C (both locally and on the remote host).
 #    Warning: This script will stop any other rsync processes not launched by this script. 
+#
+# Copying between local disks:
+# - Script will work, but it is simpler to run rsync locally.
+#   rsync -rltDv --progress --sparse --partial /source_dir/ /dest_dir/
+#
 # ===========================================================================================
 
 # Paths, hosts & defaults
-SOURCE_DIR="/vmfs/volumes/Host1SourceDatastore/"                  # Source location on SOURCE host
+SOURCE_DIR="/vmfs/volumes/Host1SourceDatastore/"                  # SOURCE location on SOURCE host (end with / for contents only)
 DEST_DIR="/vmfs/volumes/Host2DestDatastore/"                      # Destination location on DEST host
 DEST_HOST="root@192.168.1.20"                                     # Destination host ssh login
-PRIVKEY="/vmfs/volumes/Host1SourceDatastore/privkey"              # SSH private key stored on SOURCE
+PRIVKEY="/vmfs/volumes/Host1SourceDatastore/privkey"              # SSH private sshkey stored on SOURCE (to access DEST host)
 SOURCE_RSYNC_BIN="/vmfs/volumes/Host1SourceDatastore/rsync"       # SORCE rsync binary location
 DEST_RSYNC_BIN="/vmfs/volumes/Host2DestDatastore/rsync"           # DEST rsync binary location
 EXCLUDE_FILE="/vmfs/volumes/Datastore1/rsync_excludes.txt"        # Optional filter, one entry per line
 LOG_DIR="/vmfs/volumes/Datastore1/rsync_logs"                     # SOURCE host log location
 LOG_FILE="${LOG_DIR}/rsync_$(date '+%Y%m%d_%H%M%S').log"          # Log file name and format
 RSYNC_MODE="${RSYNC_MODE:-SAFE}"                                  # Set rsync mode flag: FAST --whole-file --ignore-existing | SAFE --append-verify
-RSYNC_FLAGS="-rltDv --progress --sparse --partial"                # Default rsync flags
-RSYNC_TIMEOUT=5 						  # Failback to SAFE mode on poor network. (May need to increase with --checksum) 
-RETRY_DELAY=10							  # Seconds between rsync retries (script retries infinitely)  
-CHECKSUM=0                                                        # Script default use checksums?: 0=no, 1=yes
+RSYNC_FLAGS="-rltDv --progress --sparse --partial"                # Rsync flag examples: general use -rltDv | backup + incremental -aAXvu | --delete to mirror)
+RSYNC_TIMEOUT=5                                                   # Failback to SAFE mode on timeout (May need to increase with --checksum) 
+RETRY_DELAY=10                                                    # Seconds between rsync retries (script retries infinitely)  
+CHECKSUM=0                                                        # Script default uses extra checksum layer?: 0=no, 1=yes
 CHECKSUM_TYPE="xxh3"                                              # Script default checksum algorithm
 CHECKSUM_LIST="md5 md4 sha1 sha256 sha512 xxh64 xxh128 xxh3 none" # Valid checksum algorithms
 
@@ -78,7 +83,7 @@ log() {
 
 # Log header info
 echo "=================================================================================" | tee -a "$LOG_FILE"
-echo "ESXi rsync replication script started at $(date)" | tee -a "$LOG_FILE"
+echo "rsync replication script started at $(date)" | tee -a "$LOG_FILE"
 echo "Rsync Mode: $RSYNC_MODE" | tee -a "$LOG_FILE"
 echo "=================================================================================" | tee -a "$LOG_FILE"
 
@@ -103,6 +108,7 @@ kill_process() {
 
 kill_rsync_local() {
     # Protect current shell and session
+    SCRIPT_NAME=$(basename "$0")
     SELF_PID=$$
     SELF_PPID=$PPID
 
@@ -117,13 +123,21 @@ kill_rsync_local() {
             kill_process "$pid"
         done
 
+
+       for pid in $(ps -c | grep "$SCRIPT_NAME" | awk '{print $1}'); do
+           [ -z "$pid" ] && continue
+           [ "$pid" = "$SELF_PID" ] && continue
+           [ "$pid" = "$SELF_PPID" ] && continue
+           kill -9 "$pid" 2>/dev/null || true
+       done
+
         # Kill zombie rsync processes by killing their parent
         ps -z | grep rsync | while read -r zombie_pid parent_pid rest; do
             [ "$parent_pid" -ne 1 ] && [ "$parent_pid" != "$SELF_PID" ] && [ "$parent_pid" != "$SELF_PPID" ] && {
                 echo "Zombie $zombie_pid detected, killing parent $parent_pid"
                 kill_process "$parent_pid"
             }
-        done
+       done
 
     else
         # Kill all live rsync processes except script and parent
@@ -134,6 +148,12 @@ kill_rsync_local() {
             echo "Killing rsync PID $pid"
             kill_process "$pid"
         done
+
+      	for pid in $(ps aux | grep "$SCRIPT_NAME" | awk '{print $2}'); do
+        [ "$pid" = "$SELF_PID" ] && continue
+        [ "$pid" = "$SELF_PPID" ] && continue
+	kill -9 "$pid" 2>/dev/null || true
+	done
 
         # Kill zombie rsync processes by parent
         ps aux | awk '$8=="Z" && $11~/rsync/ {print $2}' | while read -r zombie; do
@@ -147,24 +167,18 @@ kill_rsync_local() {
 }
 
 kill_rsync_remote() {
-    # Fetch all remote rsync PIDs
-    remote_pids=$(ssh_exec 'ps | grep "[r]sync" | awk "{print \$1}"')
-
-    # Echo locally for each PID
-    for pid in $remote_pids; do
-        echo "Killing leftover (remote) rsync PID $pid"
-    done
-
-    # Send SSH command to kill
-    ssh_exec "
+    ssh_exec '
+        remote_pids=$(ps | grep "[r]sync" | awk "{print \$1}")
         for pid in $remote_pids; do
-            kill \$pid 2>/dev/null || true
+            [ -z "$pid" ] && continue
+            echo "Killing remote rsync PID $pid"
+            kill $pid 2>/dev/null || true
+            # Ensure process is gone
+            ps | grep -q "^$pid$" && kill -9 $pid 2>/dev/null || true
         done
-        for pid in $remote_pids; do
-            ps | grep -q \"^\\\$pid\$\" && kill -9 \$pid 2>/dev/null || true
-        done
-    "
+    '
 }
+
 
 # Start main script
 [ -t 1 ] && clear
@@ -197,6 +211,14 @@ while [ $# -gt 0 ]; do
         CHECKSUM_TYPE="${1#*=}"
         CHECKSUM=1
         ;;
+    --kill)
+        echo "Killing leftover backup processes and cleaning temporary files..."
+	echo
+        kill_rsync_local 2>/dev/null
+        kill_rsync_remote 2>/dev/null
+        echo "Cleanup complete. Exiting."
+	exit 0
+         ;;
     --no-excludes)
         NO_EXCLUDES=1
         ;;
@@ -204,13 +226,14 @@ while [ $# -gt 0 ]; do
         echo
         echo "Usage: $0 [--fast | --safe] [--dry-run] [--checksum --checksum-type=<algo>] [--no-excludes]"
         echo
-        echo "  --fast       Run rsync in whole-file mode (no partial verification)"
-        echo "  --safe       Run rsync in append-verify mode (slower, safer)"
-        echo "  --dry-run    Test run without copying files"
-        echo "  --checksum   Enable checksum comparison (very slow)"
+        echo "  --fast          Run rsync in whole-file mode (no partial verification)"
+        echo "  --safe          Run rsync in append-verify mode (slower, safer)"
+        echo "  --dry-run       Test run without copying files"
+        echo "  --checksum      Enable checksum comparison (very slow)"
         echo "  --checksum-type=<see checksum list>"
-        echo "  --no-exlcudes Ignore existing excludes file"
-         echo
+        echo "  --no-exlcudes   Ignore existing excludes file"
+	echo "  --kill          Kill any hung processes & unlock files"
+        echo
         exit 1
         ;;
     *)
@@ -239,8 +262,7 @@ cleanup_all() {
     [ "$CLEANUP_DONE" -eq 1 ] && return 0
     CLEANUP_DONE=1
     echo "Running rsync cleanup... (local & remote)"
-    echo
-    kill_rsync_local
+    kill_rsync_local 
     kill_rsync_remote
 }
 
@@ -248,8 +270,8 @@ cleanup_all() {
 trap 'cleanup_all; exit 1' INT TERM
 trap 'cleanup_all' EXIT
 
-kill_rsync_local
-kill_rsync_remote
+kill_rsync_local 2>/dev/null
+kill_rsync_remote 2>/dev/null
 
 ssh_exec "mkdir -p \"${DEST_DIR}\"" || { log "Failed to create remote destination directory"; exit 1; }
 
@@ -287,8 +309,8 @@ do_rsync() {
         FAST)
             # Run in FAST mode
 			log "Running rsync with --whole-file flag"
-            echo "     Source:${SOURCE_DIR}"
-            echo "Destination:${DEST_HOST}/${DEST_DIR}"
+            log "     Source:${SOURCE_DIR}"
+            log "Destination:${DEST_HOST}${DEST_DIR}"
             "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --whole-file --ignore-existing \
                 ${RSYNC_EXCLUDES} \
                 -e "ssh $SSH_OPTS" \
@@ -299,8 +321,8 @@ do_rsync() {
             # Failover if FAST copy errors
             if [ $STATUS -ne 0 ]; then
                 log "FAST mode (copy phase) failed (exit $STATUS). Failing over to SAFE mode..."
-                echo "     Source:${SOURCE_DIR}"
-                echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                log "     Source:${SOURCE_DIR}"
+                log "Destination:${DEST_HOST}${DEST_DIR}"
                 "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                     ${RSYNC_EXCLUDES} \
                     -e "ssh $SSH_OPTS" \
@@ -312,8 +334,8 @@ do_rsync() {
 			# Optional checksum validation after FAST copy
             if [ $CHECKSUM -eq 1 ] && [ $MODE = "FAST" ]; then
                 log "Verifying destination files with $CHECKSUM_TYPE checksum"
-                echo "     Source:${SOURCE_DIR}"
-                echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                log "     Source:${SOURCE_DIR}"
+                log "Destination:${DEST_HOST}${DEST_DIR}"
                 "${SOURCE_RSYNC_BIN}" $RSYNC_FLAGS --timeout=$((RSYNC_TIMEOUT * 10)) --checksum \
                     $RSYNC_EXCLUDES \
                     -e "ssh $SSH_OPTS" \
@@ -324,8 +346,8 @@ do_rsync() {
 			   # Failover to SAFE mode
 			   if [ $STATUS -ne 0 ]; then
                     log "FAST mode (checksum phase) failed (exit $STATUS). Failing over to SAFE mode..."
-                    echo "     Source:${SOURCE_DIR}"
-                    echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                    log "     Source:${SOURCE_DIR}"
+                    log "Destination:${DEST_HOST}${DEST_DIR}"
                     "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                         ${RSYNC_EXCLUDES} \
                         -e "ssh $SSH_OPTS" \
@@ -339,8 +361,8 @@ do_rsync() {
         SAFE)
 			# Run in SAFE mode
             log "Running rsync with --append-verify flag"
-            echo "     Source:${SOURCE_DIR}"
-            echo "Destination:${DEST_HOST}/${DEST_DIR}"
+            log "     Source:${SOURCE_DIR}"
+            log "Destination:${DEST_HOST}${DEST_DIR}"
             "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                 ${RSYNC_EXCLUDES} \
                 -e "ssh $SSH_OPTS" \
@@ -381,5 +403,5 @@ while true; do
     attempt=$((attempt + 1))
 done
 log "Rsync finished successfully. Exiting."
-cleanup_all
+cleanup_all 2>/dev/null
 exit 0
