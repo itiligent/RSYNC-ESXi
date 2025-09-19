@@ -32,7 +32,7 @@
 #
 # Checksum Verification:
 #   - --append-verify (safe mode) ensures appended data is validated during copy.
-#     For belt and braces assurance and to ensure the finished copy integrity, run with:
+#     For "belt and braces" assurance and to ensure the finished copy integrity, run with:
 #     --checksum or --checksum-type=<algo> to choose the checksum algorithm
 #     This script assumes rysnc support for: md5, md4, sha1, sha256, sha512,
 #     xxh64, xxh128, xxh3 (default: xxh3)
@@ -287,8 +287,8 @@ do_rsync() {
         FAST)
             # Run in FAST mode
 			log "Running rsync with --whole-file flag"
-            echo "     Source:${SOURCE_DIR}"
-            echo "Destination:${DEST_HOST}/${DEST_DIR}"
+            log "     Source:${SOURCE_DIR}"
+            log "Destination:${DEST_HOST}/${DEST_DIR}"
             "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --whole-file --ignore-existing \
                 ${RSYNC_EXCLUDES} \
                 -e "ssh $SSH_OPTS" \
@@ -299,8 +299,8 @@ do_rsync() {
             # Failover if FAST copy errors
             if [ $STATUS -ne 0 ]; then
                 log "FAST mode (copy phase) failed (exit $STATUS). Failing over to SAFE mode..."
-                echo "     Source:${SOURCE_DIR}"
-                echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                log "     Source:${SOURCE_DIR}"
+                log "Destination:${DEST_HOST}/${DEST_DIR}"
                 "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                     ${RSYNC_EXCLUDES} \
                     -e "ssh $SSH_OPTS" \
@@ -312,8 +312,8 @@ do_rsync() {
 			# Optional checksum validation after FAST copy
             if [ $CHECKSUM -eq 1 ] && [ $MODE = "FAST" ]; then
                 log "Verifying destination files with $CHECKSUM_TYPE checksum"
-                echo "     Source:${SOURCE_DIR}"
-                echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                log "     Source:${SOURCE_DIR}"
+                log "Destination:${DEST_HOST}/${DEST_DIR}"
                 "${SOURCE_RSYNC_BIN}" $RSYNC_FLAGS --timeout=$((RSYNC_TIMEOUT * 10)) --checksum \
                     $RSYNC_EXCLUDES \
                     -e "ssh $SSH_OPTS" \
@@ -324,8 +324,8 @@ do_rsync() {
 			   # Failover to SAFE mode
 			   if [ $STATUS -ne 0 ]; then
                     log "FAST mode (checksum phase) failed (exit $STATUS). Failing over to SAFE mode..."
-                    echo "     Source:${SOURCE_DIR}"
-                    echo "Destination:${DEST_HOST}/${DEST_DIR}"
+                    log "     Source:${SOURCE_DIR}"
+                    log "Destination:${DEST_HOST}/${DEST_DIR}"
                     "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                         ${RSYNC_EXCLUDES} \
                         -e "ssh $SSH_OPTS" \
@@ -339,8 +339,8 @@ do_rsync() {
         SAFE)
 			# Run in SAFE mode
             log "Running rsync with --append-verify flag"
-            echo "     Source:${SOURCE_DIR}"
-            echo "Destination:${DEST_HOST}/${DEST_DIR}"
+            log "     Source:${SOURCE_DIR}"
+            log "Destination:${DEST_HOST}/${DEST_DIR}"
             "${SOURCE_RSYNC_BIN}" ${RSYNC_FLAGS} --timeout=$RSYNC_TIMEOUT --append-verify \
                 ${RSYNC_EXCLUDES} \
                 -e "ssh $SSH_OPTS" \
