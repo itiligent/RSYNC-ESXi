@@ -12,15 +12,15 @@
 # 2. Run the build script NOT as sudo or root ./rsync-esxi-builder-multiOS.sh
 #
 # 3. When the script completes, copy the compiled rsync binary from $HOME/build-static/bin to 
-#    	all source & destination ESXi hosts** (note the install path of each - you will need this later)
+#    all source & destination ESXi hosts** (note the install path of each - you will need this later)
 #
 # 4. On each ESXi host, set execute permissions on the binary: chmod 755 /path/to/rsync
 #
 # 5. For ESXi 8 and above only – you must also allow execution of non-native binaries:
-#    	esxcli system settings advanced set -o /User/execInstalledOnly -i 0
+#    esxcli system settings advanced set -o /User/execInstalledOnly -i 0
 #
-# 6. Configure RSA SSH keys for passwordless SSH authentication
-# 		(VMware does not currently support Ed25519 keys for Esxi host to host sessions.)
+# 6. Configure RSA SSH keys for passwordless SSH authentication. Note: VMware does not currently support Ed25519
+#    keys for Esxi host to host sessions.)
 #
 # 7. Look to https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-host-2-host.sh for the companion replication script
 
@@ -119,7 +119,6 @@ echo
     cd ..
 fi
 
-
 # 2. Build lz4 from source (static) [alt Fedora packages are lz4-devel lz4-static]
 if [ ! -f $LZ4/lib/liblz4.a ]; then
 echo
@@ -134,7 +133,6 @@ echo
     cp lib/*.h $LZ4/include/ 2>/dev/null || cp *.h $LZ4/include/
     cd ..
 fi
-
 
 # 3. Build zstd from source (static) [alt Fedora packages libzstd-static libzstd-devel]
 if [ ! -f $ZSTD/lib/libzstd.a ]; then
@@ -152,7 +150,6 @@ echo
     cd ../..
 fi
 
-
 # 4. Build OpenSSL from source (static)
 if [ ! -f $OPENSSL/lib/libssl.a ]; then
 echo
@@ -168,7 +165,6 @@ echo
 	cd ..
 fi
 
-
 # 5. Build popt from source (static) [alt Fedora packages popt-devel popt-static]
 if [ ! -f $POPT/lib/libpopt.a ]; then
 echo
@@ -182,7 +178,6 @@ echo
 	make install
     cd ..
 fi
-
 
 # 6. Build xxHash from source (static) [alt Fedora packages xxhash-devel xxhash]
 
@@ -200,7 +195,6 @@ echo
 	cd ..
 fi
 
-
 # 7. Build rsync from source (static)
 echo
 echo "### Building static rsync ###"
@@ -216,7 +210,6 @@ echo
     make install
 	strip --strip-all $RSYNC/bin/rsync
     cd ..
-
 
 # 8. Verify and report
 RSYNC_BIN="$RSYNC/bin/rsync"
