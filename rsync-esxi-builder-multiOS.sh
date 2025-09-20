@@ -66,7 +66,7 @@ cd $WORKDIR
 
 # Function to install dependencies on Red Hat-based systems
 install_redhat() {
-    echo -e "${CYAN}Detected Red Hat-based system. Installing dependencies...${NC}"
+    echo -e "${CYAN}Detected RedHat based system. Installing dependencies...${NC}"
 	echo
     sudo yum -y update
     sudo yum -y install curl python3-pip automake perl gcc glibc-static
