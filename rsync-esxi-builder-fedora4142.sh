@@ -24,6 +24,7 @@
 #
 # 7. Look to https://github.com/itiligent/RSYNC-ESXi/blob/main/rsync-host-2-host.sh for the companion replication script
 
+#!/usr/bin/env bash
 set -eu
 
 clear
@@ -35,7 +36,7 @@ CYAN="\033[0;36m"
 NC="\033[0m"  # No colour
 
 echo
-echo "### Rsync for Esxi build script ###"
+echo "### Rsync for ESXi build script ###"
 echo
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -43,76 +44,78 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
-RSYNC_VER="3.4.1"			# Set the rsync version to build
-OPENSSL_VER="1.1.1w"		# Legacy 1.1.1w is more compatible with legacy crypto algorithyms
+RSYNC_VER="3.4.1"
+OPENSSL_VER="1.1.1w"  # Must use OpenSSL 1.1.1 (legacy) track due to rsync md5 dependency
 XXHASH_VER="0.8.3"
 
-WORKDIR=$HOME/build-static
-PREFIX=$WORKDIR/prefix
-OPENSSL=$WORKDIR/openssl
-RSYNC=$WORKDIR/rsync
-XXHASH=$WORKDIR/xxhash
+WORKDIR="$HOME/build-static"
+PREFIX="$WORKDIR/prefix"
+OPENSSL="$WORKDIR/openssl"
+RSYNC="$WORKDIR/rsync"
+XXHASH="$WORKDIR/xxhash"
 
-mkdir -p $WORKDIR $PREFIX $OPENSSL $RSYNC $XXHASH
-cd $WORKDIR
+mkdir -p "$WORKDIR" "$PREFIX" "$OPENSSL" "$RSYNC" "$XXHASH"
+cd "$WORKDIR"
 
-
-# Install essential build tools
+# Install build tools
 sudo dnf -y update && sudo dnf -y install \
-curl zlib-devel zlib-static lz4-devel lz4-static python3-pip automake \
-libzstd-static libzstd-devel popt-devel popt-static perl glibc-static
+    curl zlib-devel zlib-static lz4-devel lz4-static python3-pip automake \
+    libzstd-static libzstd-devel popt-devel popt-static perl glibc-static
+
 python3 -m pip install --user commonmark
 
+# 1. Build OpenSSL
+if [ ! -f "$OPENSSL/lib/libssl.a" ]; then
+    echo
+    echo -e "${CYAN}### Building static OpenSSL ###${NC}"
+    echo
 
-# 1. Build OpenSSL (static)
-if [ ! -f $OPENSSL/lib/libssl.a ]; then
-	echo
-	echo "### Building static openssl ###"
-	echo
+    curl -LO "https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz"
+    tar -xzf "openssl-$OPENSSL_VER.tar.gz"
+    cd "openssl-$OPENSSL_VER"
 
-	curl -LO https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz
-	tar -xzf openssl-$OPENSSL_VER.tar.gz
-	cd openssl-$OPENSSL_VER
-	./Configure linux-x86_64 no-shared no-dso no-async \
-	no-comp no-hw no-tests no-afalgeng -DOPENSSL_NO_SECURE_MEMORY --prefix=$OPENSSL	
-	make -j$(nproc)
-	make install_sw
-	cd ..
+    ./Configure linux-x86_64 no-shared no-dso no-async \
+        no-comp no-hw no-tests no-afalgeng -DOPENSSL_NO_SECURE_MEMORY --prefix="$OPENSSL"
+    make -j"$(nproc)"
+    make install_sw
+    cd ..
 fi
 
+# 2. Build xxHash
+if [ ! -f "$XXHASH/lib/libxxhash.a" ]; then
+    echo
+    echo -e "${CYAN}### Building static xxHash ###${NC}"
+    echo
 
-# 2. Build xxHash (static)
+    curl -LO "https://github.com/Cyan4973/xxHash/archive/refs/tags/v$XXHASH_VER.tar.gz"
+    tar -xzf "v$XXHASH_VER.tar.gz"
+    cd "xxHash-$XXHASH_VER"
 
-if [ ! -f $XXHASH/lib/libxxhash.a ]; then
-echo
-echo "### Building static xxhash ###"
-echo
-	curl -LO https://github.com/Cyan4973/xxHash/archive/refs/tags/v$XXHASH_VER.tar.gz
-	tar -xzf v$XXHASH_VER.tar.gz
-	cd xxHash-$XXHASH_VER
-	mkdir -p $XXHASH/lib $XXHASH/include
-	make -j$(nproc)
-	cp libxxhash.* $XXHASH/lib/
-	cp *.h $XXHASH/include/
-	cd ..
+    mkdir -p "$XXHASH/lib" "$XXHASH/include"
+    make -j"$(nproc)"
+    cp libxxhash.* "$XXHASH/lib/"
+    cp *.h "$XXHASH/include/"
+    cd ..
 fi
 
-
-# 3. Build rsync (static)
+# 3. Build rsync
 echo
 echo "### Building static rsync ###"
 echo
-	curl -LO https://github.com/RsyncProject/rsync/archive/refs/tags/v$RSYNC_VER.tar.gz
-	tar -xzf v$RSYNC_VER.tar.gz
-	cd rsync-$RSYNC_VER
-	export PKG_CONFIG_PATH=$OPENSSL/lib/pkgconfig
-	export CFLAGS="-I/usr/include -I/usr/include/lz4 -I$XXHASH/include -I/usr/include/zstd -I$OPENSSL/include -std=c99 -O2"
-	export LDFLAGS="-L$OPENSSL/lib -L$XXHASH/lib -static -ldl -lpthread -lm"
-	./configure --prefix=$RSYNC --disable-md2man --with-included-zlib=no
-    make -j$(nproc)
-    make install
-	strip --strip-all $RSYNC/bin/rsync
-    cd ..
+
+curl -LO "https://github.com/RsyncProject/rsync/archive/refs/tags/v$RSYNC_VER.tar.gz"
+tar -xzf "v$RSYNC_VER.tar.gz"
+cd "rsync-$RSYNC_VER"
+
+export PKG_CONFIG_PATH="$OPENSSL/lib/pkgconfig"
+export CFLAGS="-I/usr/include -I/usr/include/lz4 -I$XXHASH/include -I/usr/include/zstd -I$OPENSSL/include -std=c99 -O2"
+export LDFLAGS="-L$OPENSSL/lib -L$XXHASH/lib -static -ldl -lpthread -lm"
+
+./configure --prefix="$RSYNC" --disable-md2man --with-included-zlib=no
+make -j"$(nproc)"
+make install
+strip --strip-all "$RSYNC/bin/rsync"
+cd ..
 
 # 4. Verify and report
 RSYNC_BIN="$RSYNC/bin/rsync"
@@ -123,7 +126,7 @@ echo
 
 FILE_INFO=$(file "$RSYNC_BIN")
 if echo "$FILE_INFO" | grep -q "statically linked"; then
-	echo -e "${CYAN}New rsync binary build info:"
+    echo -e "${CYAN}New rsync binary build info:"
     echo -e "${GREEN}${FILE_INFO}${NC}"
 else
     echo -e "${RED}${FILE_INFO} (Warning: not fully static)${NC}"
@@ -141,4 +144,5 @@ echo
 echo -e "${CYAN}If successful, 'binary build info' output above should say 'statically linked'."
 echo -e "${GREEN}New binary location: ${RSYNC_BIN}${NC}"
 echo
-
+{GREEN}New binary location: ${RSYNC_BIN}${NC}"
+echo
