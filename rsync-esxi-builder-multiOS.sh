@@ -35,7 +35,7 @@ CYAN="\033[0;36m"
 NC="\033[0m"  # No colour
 
 echo
-echo "### Rsync for Esxi build script ###"
+echo -e "${CYAN}### Rsync for Esxi build script ###${NC}"
 echo
 
 if [ "$(id -u)" -eq 0 ]; then
@@ -66,7 +66,7 @@ cd $WORKDIR
 
 # Function to install dependencies on Red Hat-based systems
 install_redhat() {
-    echo "Detected Red Hat-based system. Installing dependencies..."
+    echo -e "${CYAN}Detected Red Hat-based system. Installing dependencies...${NC}"
 	echo
     sudo yum -y update
     sudo yum -y install curl python3-pip automake perl gcc glibc-static
@@ -75,7 +75,7 @@ install_redhat() {
 
 # Function to install dependencies on Debian-based systems
 install_debian() {
-    echo "Detected Debian-based system. Installing dependencies..."
+    echo -e "${CYAN}Detected Debian-based system. Installing dependencies...${NC}"
 	echo
     sudo apt update
     sudo apt install -y curl python3-venv python3-pip build-essential automake pkg-config libssl-dev
@@ -98,17 +98,17 @@ elif command -v apt >/dev/null 2>&1; then
     mkdir -p $WORKDIR/venv
     install_debian
 else
-    echo "Unsupported system. Please install dependencies manually."
+    echo -e "${RED}Unsupported system. Please install dependencies manually.${NC}"
     exit 1
 fi
 
-echo "All dependencies installed successfully!"
+echo -e "${GREEN}All dependencies installed successfully!${NC}"
 echo
 
 # 1. Build zlib from source (static) [alt Fedora42 pakages are zlib-devel zlib-static]
 if [ ! -f $ZLIB/lib/libz.a ]; then
 echo
-echo "### Building zlib ###"
+echo -e "${CYAN}### Building zlib ###${NC}"
 echo
     curl -LO https://zlib.net/zlib-$ZLIB_VER.tar.gz
 	tar -xzf zlib-$ZLIB_VER.tar.gz
@@ -122,7 +122,7 @@ fi
 # 2. Build lz4 from source (static) [alt Fedora packages are lz4-devel lz4-static]
 if [ ! -f $LZ4/lib/liblz4.a ]; then
 echo
-echo " ### Building lz4 ###"
+echo -e "${CYAN}### Building static lz4 ###${NC}"
 echo
     curl -LO https://github.com/lz4/lz4/archive/refs/tags/v$LZ4_VER.tar.gz
 	tar -xzf v$LZ4_VER.tar.gz
@@ -137,7 +137,7 @@ fi
 # 3. Build zstd from source (static) [alt Fedora packages libzstd-static libzstd-devel]
 if [ ! -f $ZSTD/lib/libzstd.a ]; then
 echo
-echo "### Building zstd ###"
+echo -e "${CYAN}### Building static zstd ###${NC}"
 echo
     curl -LO https://github.com/facebook/zstd/archive/refs/tags/v$ZSTD_VER.tar.gz
 	tar -xzf v$ZSTD_VER.tar.gz
@@ -153,62 +153,63 @@ fi
 # 4. Build OpenSSL from source (static)
 if [ ! -f $OPENSSL/lib/libssl.a ]; then
 echo
-echo "### Building static openssl ###"
+echo -e "${CYAN}### Building static openssl ###${NC}"
 echo
 	curl -LO https://www.openssl.org/source/openssl-$OPENSSL_VER.tar.gz
-	tar -xzf openssl-$OPENSSL_VER.tar.gz
-	cd openssl-$OPENSSL_VER
-	./Configure linux-x86_64 no-shared no-dso no-async \
-	no-comp no-hw no-tests no-afalgeng -DOPENSSL_NO_SECURE_MEMORY --prefix=$OPENSSL	
-	make -j$(nproc)
-	make install_sw
+	    tar -xzf openssl-$OPENSSL_VER.tar.gz
+	    cd openssl-$OPENSSL_VER
+	    ./Configure linux-x86_64 no-shared no-dso no-async \
+	    no-comp no-hw no-tests no-afalgeng -DOPENSSL_NO_SECURE_MEMORY --prefix=$OPENSSL	
+	    make -j$(nproc)
+	    make install_sw
 	cd ..
 fi
 
 # 5. Build popt from source (static) [alt Fedora packages popt-devel popt-static]
 if [ ! -f $POPT/lib/libpopt.a ]; then
 echo
-echo "### Building static popt ###"
+echo -e "${CYAN}### Building popt ###${NC}"
 echo
-    curl -LO http://ftp.rpm.org/popt/releases/popt-1.x/popt-$POPT_VER.tar.gz
-	tar -xzf popt-$POPT_VER.tar.gz
-    cd popt-$POPT_VER
-	./configure --prefix=$POPT --disable-shared --enable-static
-	make -j$(nproc)
-	make install
+    curl -LO https://ftp.osuosl.org/pub/rpm/popt/releases/popt-1.x/popt-$POPT_VER.tar.gz
+        tar -xzf popt-$POPT_VER.tar.gz
+            cd popt-$POPT_VER
+            ./configure --prefix=$POPT --disable-shared --enable-static
+        make -j$(nproc)
+        make install
     cd ..
+
 fi
 
 # 6. Build xxHash from source (static) [alt Fedora packages xxhash-devel xxhash]
 
 if [ ! -f $XXHASH/lib/libxxhash.a ]; then
 echo
-echo "### Building static xxhash ###"
+echo -e "${CYAN}### Building static xxhash ###${NC}"
 echo
 	curl -LO https://github.com/Cyan4973/xxHash/archive/refs/tags/v$XXHASH_VER.tar.gz
-	tar -xzf v$XXHASH_VER.tar.gz
-	cd xxHash-$XXHASH_VER
-	mkdir -p $XXHASH/lib $XXHASH/include
-	make -j$(nproc)
-	cp libxxhash.* $XXHASH/lib/
-	cp *.h $XXHASH/include/
+	    tar -xzf v$XXHASH_VER.tar.gz
+	        cd xxHash-$XXHASH_VER
+	        mkdir -p $XXHASH/lib $XXHASH/include
+	            make -j$(nproc)
+	        cp libxxhash.* $XXHASH/lib/
+	    cp *.h $XXHASH/include/
 	cd ..
 fi
 
 # 7. Build rsync from source (static)
 echo
-echo "### Building static rsync ###"
+echo -e "${CYAN}### Building static rsync ###${NC}"
 echo
 	curl -LO https://github.com/RsyncProject/rsync/archive/refs/tags/v$RSYNC_VER.tar.gz
-	tar -xzf v$RSYNC_VER.tar.gz
-	cd rsync-$RSYNC_VER
-	export PKG_CONFIG_PATH=$ZLIB/lib/pkgconfig:$OPENSSL/lib/pkgconfig:$POPT/lib/pkgconfig
-	export CFLAGS="-I$ZLIB/include -I$LZ4/include -I$ZSTD/include -I$OPENSSL/include -I$POPT/include -I$XXHASH/include -std=c99 -O2"
-	export LDFLAGS="-L$ZLIB/lib -L$LZ4/lib -L$ZSTD/lib -L$OPENSSL/lib -L$POPT/lib -L$XXHASH/lib -static -ldl -lpthread -lm"
-	./configure --prefix=$RSYNC --disable-md2man --with-included-zlib=no
-    make -j$(nproc)
-    make install
-	strip --strip-all $RSYNC/bin/rsync
+	    tar -xzf v$RSYNC_VER.tar.gz
+	        cd rsync-$RSYNC_VER
+	            export PKG_CONFIG_PATH=$ZLIB/lib/pkgconfig:$OPENSSL/lib/pkgconfig:$POPT/lib/pkgconfig
+	            export CFLAGS="-I$ZLIB/include -I$LZ4/include -I$ZSTD/include -I$OPENSSL/include -I$POPT/include -I$XXHASH/include -std=c99 -O2"
+	            export LDFLAGS="-L$ZLIB/lib -L$LZ4/lib -L$ZSTD/lib -L$OPENSSL/lib -L$POPT/lib -L$XXHASH/lib -static -ldl -lpthread -lm"
+	           ./configure --prefix=$RSYNC --disable-md2man --with-included-zlib=no
+            make -j$(nproc)
+            make install
+	    strip --strip-all $RSYNC/bin/rsync
     cd ..
 
 # 8. Verify and report
