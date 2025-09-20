@@ -43,11 +43,11 @@ if [ "$(id -u)" -eq 0 ]; then
     exit 1
 fi
 
-RSYNC_VER="3.2.7"   # rsync version to build
+RSYNC_VER="3.4.1"
 ZLIB_VER="1.3.1"
 LZ4_VER="1.10.0"
 ZSTD_VER="1.5.7"
-OPENSSL_VER="1.1.1w" # older versions more compatible with rsync & legacy md5
+OPENSSL_VER="1.1.1w" # Must use OpenSSL 1.1.1 (legacy) track due to rsync md5 dependency
 POPT_VER="1.19"
 XXHASH_VER="0.8.3"
 
