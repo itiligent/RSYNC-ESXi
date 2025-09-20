@@ -111,8 +111,8 @@ if [ ! -f "$ZLIB/lib/libz.a" ]; then
     echo
     echo -e "${CYAN}### Building zlib ###${NC}"
     echo
-    curl -LO "https://zlib.net/zlib-$ZLIB_VER.tar.gz"
-    tar -xzf "zlib-$ZLIB_VER.tar.gz"
+    curl -LO "https://github.com/madler/zlib/archive/refs/tags/v$ZLIB_VER.tar.gz"
+    tar -xzf "v$ZLIB_VER.tar.gz"
     cd "zlib-$ZLIB_VER"
     ./configure --static --prefix="$ZLIB"
     make -j"$(nproc)"
