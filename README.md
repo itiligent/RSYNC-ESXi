@@ -19,19 +19,11 @@ If you dont wan't to build your own, download here:
 ---
 
 ## 🔨 Rsync Build Script Prerequisites
-#### Supported Debian Based OS:
-- Debian 13 | Ubuntu 24
-
-#### Supported Red Hat-based OS 
-Any distributions with the `glibc-static` package eg:
-- AlmaLinux 8, 9, 10  
-- Amazon Linux 2 & 2023  
-- CentOS 9 & 10  
-- Fedora 41 & 42  
-- OpenSUSE 15.6 & Tumbleweed  
-- Oracle Linux 8, 9, 10  
-- Rocky Linux 8, 9, 10  
-
+#### Supported Build Platforms:
+ Debian 13 | Ubuntu 24 | RedHat distros with `glibc-static` package eg:
+```
+AlmaLinux 8, 9, 10 | CentOS 9 & 10 | Fedora 41 & 42 | Rocky Linux 8, 9, 10  
+```
 ## Building A Portable Rsync Binary
 
 1. On a fresh supported system, run the build script **(not as root or sudo)**:
