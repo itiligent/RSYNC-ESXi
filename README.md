@@ -46,9 +46,7 @@ All build files are created in `$HOME/build-static`
    ```bash
    esxcli system settings advanced set -o /User/execInstalledOnly -i 0
    ```
-5. Configure destination **RSA SSH keys** for passwordless host-to-host authentication.
-
-   *(Note: VMware ESXi 8 does not yet support Ed25519 keys for ESXi host-to-host sessions.)*
+5. Configure destination **RSA or EdDSA SSH keys** for passwordless host-to-host authentication.
 
 ---
 
