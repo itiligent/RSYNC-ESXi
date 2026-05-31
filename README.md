@@ -67,7 +67,7 @@ The script provides:
 ### 🚀 Getting started with the replication script
 
 1. **Ensure an rsync binary is installed** on both source and destination ESXi hosts.
-2. **Set up RSA SSH keys** for passwordless ssh access from the source host to the destination host.
+2. **Set up SSH keys** for passwordless ssh access from the source host to the destination host.
 3. Configure script options for source | destination | rsync binary paths | private key | excludes (optional) 
 4. **Choose your replication mode:**
 
